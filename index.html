@@ -5,9 +5,18 @@
     <title>碰撞点交互地图示例</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
-        #map { height: 600px; width: 100%; }
+        #map { height: 1600px; width: 100%; }
         .mini-map { height: 200px; width: 200px; }
         #timeSelector { margin: 10px; }
+
+        /* 自定义标签样式：无边框、无背景 */
+        .custom-tooltip {
+            background: none;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;  /* 可以根据地图背景调整颜色 */
+        }
     </style>
 </head>
 <body>
@@ -27,7 +36,7 @@
 
 <script>
     // 初始化主地图，中心点改为32.442065, -97.085224
-    var map = L.map('map').setView([32.442065, -97.085224], 13);
+    var map = L.map('map').setView([32.442065, -97.085224], 16);
 
     // 添加 Esri Dark Gray Canvas 底图
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -40,12 +49,12 @@
             points: [
                 {
                     "type": "Feature",
-                    "properties": { "id": 1 },
+                    "properties": { "id": 1, "label": "Estimated time of collision: 10:23:52" },
                     "geometry": { "type": "Point", "coordinates": [-97.085224, 32.442065] }
                 },
                 {
                     "type": "Feature",
-                    "properties": { "id": 2 },
+                    "properties": { "id": 2, "label": "Estimated time of collision: 10:43:13" },
                     "geometry": { "type": "Point", "coordinates": [-97.075224, 32.442565] }
                 }
             ],
@@ -80,12 +89,12 @@
             points: [
                 {
                     "type": "Feature",
-                    "properties": { "id": 3 },
+                    "properties": { "id": 3, "label": "Estimated time of collision: 11:44:52" },
                     "geometry": { "type": "Point", "coordinates": [-97.090224, 32.450065] }
                 },
                 {
                     "type": "Feature",
-                    "properties": { "id": 4 },
+                    "properties": { "id": 4, "label": "Estimated time of collision: 11:53:07" },
                     "geometry": { "type": "Point", "coordinates": [-97.080224, 32.451065] }
                 }
             ],
@@ -132,6 +141,13 @@
                 return L.circleMarker(latlng, { color: "red", radius: 8 });
             },
             onEachFeature: function (feature, layer) {
+                // 绑定标签，显示碰撞事件编号，无边框和背景
+                layer.bindTooltip(feature.properties.label, {
+                    permanent: true,  // 标签始终显示
+                    direction: "top",  // 文字显示在点的上方
+                    className: 'custom-tooltip'  // 自定义样式
+                }).openTooltip();
+
                 layer.on('click', function () {
                     // 弹出小地图显示车辆轨迹
                     var popupContent = '<div class="mini-map" id="miniMap' + feature.properties.id + '"></div>';
