@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>碰撞点交互地图示例</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; }
+        .mini-map { height: 200px; width: 200px; }
+        #timeSelector { margin: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- 时间选择器 -->
+<div id="timeSelector">
+    <label for="timePeriod">Select time period:</label>
+    <select id="timePeriod">
+        <option value="10-11">2022/06/12 10:00-10:59</option>
+        <option value="11-12">2022/06/12 11:00-11:59</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+<script>
+    // 初始化主地图，中心点改为32.442065, -97.085224
+    var map = L.map('map').setView([32.442065, -97.085224], 13);
+
+    // 添加 Esri Dark Gray Canvas 底图
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri &mdash; Esri, DeLorme, NAVTEQ'
+    }).addTo(map);
+
+    // 不同时间段的碰撞点数据和轨迹
+    var dataByTime = {
+        '10-11': {
+            points: [
+                {
+                    "type": "Feature",
+                    "properties": { "id": 1 },
+                    "geometry": { "type": "Point", "coordinates": [-97.085224, 32.442065] }
+                },
+                {
+                    "type": "Feature",
+                    "properties": { "id": 2 },
+                    "geometry": { "type": "Point", "coordinates": [-97.075224, 32.442565] }
+                }
+            ],
+            trajectories: {
+                1: {
+                    traj1: [
+                        [32.440065, -97.090224],
+                        [32.441065, -97.087224],
+                        [32.442065, -97.085224]
+                    ],
+                    traj2: [
+                        [32.444065, -97.083224],
+                        [32.443065, -97.084224],
+                        [32.442065, -97.085224]
+                    ]
+                },
+                2: {
+                    traj1: [
+                        [32.440565, -97.080224],
+                        [32.441565, -97.078224],
+                        [32.442565, -97.075224]
+                    ],
+                    traj2: [
+                        [32.445065, -97.074224],
+                        [32.444065, -97.073224],
+                        [32.442565, -97.075224]
+                    ]
+                }
+            }
+        },
+        '11-12': {
+            points: [
+                {
+                    "type": "Feature",
+                    "properties": { "id": 3 },
+                    "geometry": { "type": "Point", "coordinates": [-97.090224, 32.450065] }
+                },
+                {
+                    "type": "Feature",
+                    "properties": { "id": 4 },
+                    "geometry": { "type": "Point", "coordinates": [-97.080224, 32.451065] }
+                }
+            ],
+            trajectories: {
+                3: {
+                    traj1: [
+                        [32.448065, -97.095224],
+                        [32.449065, -97.092224],
+                        [32.450065, -97.090224]
+                    ],
+                    traj2: [
+                        [32.452065, -97.088224],
+                        [32.451065, -97.089224],
+                        [32.450065, -97.090224]
+                    ]
+                },
+                4: {
+                    traj1: [
+                        [32.445565, -97.080224],
+                        [32.446565, -97.078224],
+                        [32.451065, -97.080224]
+                    ],
+                    traj2: [
+                        [32.452565, -97.074224],
+                        [32.451565, -97.073224],
+                        [32.451065, -97.080224]
+                    ]
+                }
+            }
+        }
+    };
+
+    var collisionLayer;
+
+    // 根据时间段更新地图上的碰撞点和轨迹
+    function updateMap(timePeriod) {
+        if (collisionLayer) {
+            map.removeLayer(collisionLayer);
+        }
+
+        var data = dataByTime[timePeriod];
+        collisionLayer = L.geoJSON(data.points, {
+            pointToLayer: function (feature, latlng) {
+                return L.circleMarker(latlng, { color: "red", radius: 8 });
+            },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function () {
+                    // 弹出小地图显示车辆轨迹
+                    var popupContent = '<div class="mini-map" id="miniMap' + feature.properties.id + '"></div>';
+                    layer.bindPopup(popupContent).openPopup();
+
+                    // 延迟初始化小地图，避免ID未渲染的问题
+                    setTimeout(function() {
+                        var miniMap = L.map('miniMap' + feature.properties.id, {
+                            center: layer.getLatLng(),
+                            zoom: 15,
+                            dragging: false,
+                            zoomControl: false
+                        });
+                        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                            attribution: 'Tiles © Esri &mdash; Esri, DeLorme, NAVTEQ'
+                        }).addTo(miniMap);
+
+                        // 获取当前碰撞点的轨迹
+                        var trajData = data.trajectories[feature.properties.id];
+
+                        // 添加各自的车辆轨迹
+                        L.polyline(trajData.traj1, { color: "blue" }).addTo(miniMap);
+                        L.polyline(trajData.traj2, { color: "green" }).addTo(miniMap);
+                    }, 10);
+                });
+            }
+        }).addTo(map);
+    }
+
+    // 初始化地图
+    updateMap('10-11');
+
+    // 监听时间选择器变化，更新地图
+    document.getElementById('timePeriod').addEventListener('change', function(e) {
+        var selectedTime = e.target.value;
+        updateMap(selectedTime);
+    });
+
+</script>
+
+</body>
+</html>
